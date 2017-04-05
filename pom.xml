@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.twitter.heron</groupId>
             <artifactId>heron-storm</artifactId>
-            <version>0.14.5</version>
+            <version>0.14.6</version>
         </dependency>
 
         <!-- https://jersey.java.net/apidocs/1.19.1/jersey/index.html -->
