@@ -72,7 +72,7 @@ public class AirTrafficSpout extends BaseRichSpout {
         
             Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
                 "... pausing before reading more\n");            
-            Utils.sleep(60*1000); //30 second pause - don't want to hammer the service!
+            Utils.sleep(60*1000); // pause - don't want to hammer the service!
         }//else, has not been read yet
 
         Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 

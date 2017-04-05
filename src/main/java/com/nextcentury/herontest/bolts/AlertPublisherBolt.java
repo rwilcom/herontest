@@ -2,6 +2,8 @@ package com.nextcentury.herontest.bolts;
 
 import com.nextcentury.herontest.HeronTestTupleSchema;
 import com.nextcentury.herontest.dto.Activity;
+import com.nextcentury.herontest.dto.ActivityAlert;
+import com.nextcentury.herontest.dto.Alert;
 import com.twitter.heron.api.metric.GlobalMetrics;
 
 import com.twitter.heron.api.bolt.BaseRichBolt;
@@ -9,18 +11,16 @@ import com.twitter.heron.api.bolt.OutputCollector;
 import com.twitter.heron.api.topology.OutputFieldsDeclarer;
 import com.twitter.heron.api.topology.TopologyContext;
 
-import com.twitter.heron.api.tuple.Fields;
 import com.twitter.heron.api.tuple.Tuple;
-import com.twitter.heron.api.tuple.Values;
-import com.twitter.heron.api.utils.Utils;
+import java.util.Date;
 
 import java.util.Map;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
-        
 
 
 /**
@@ -30,13 +30,13 @@ import redis.clients.jedis.JedisPoolConfig;
  * 
  * 
  */
-public class ActivityEnrichBolt extends BaseRichBolt {
+public class AlertPublisherBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = -1L;
     private OutputCollector collector;
     private JedisPool jedisPool;
     
-    public static final String ACTIVITY_ENRICH_NODE = "ActivityEnrichNode";
+    public static final String ALERT_PUBLISHER_NODE = "AlertPublisherBolt";
     
     @SuppressWarnings("rawtypes")
     @Override
@@ -45,7 +45,7 @@ public class ActivityEnrichBolt extends BaseRichBolt {
         
         jedisPool = new JedisPool(new JedisPoolConfig(), "10.10.83.58" ); //default port:6379
     }
-
+    
     @Override
     public void cleanup() {
         
@@ -55,69 +55,71 @@ public class ActivityEnrichBolt extends BaseRichBolt {
         
         super.cleanup(); //To change body of generated methods, choose Tools | Templates.        
     }
-        
-    
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(HeronTestTupleSchema.getBoltPayloadSchema());   
-    }    
+         //nothing ot declare - not forwarding on to other bolts
+    }
 
     @Override
     public void execute(Tuple tuple) {
         
-        String payloadClass = tuple.getStringByField(HeronTestTupleSchema.SCHEMA_PAYLOADCLASS);
+        //multiple streams input
+        Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.INFO,
+                "execute - input stream name: "+tuple.getSourceStreamId()+"\n");        
         
-        //Logger.getLogger(ActivityEnrichBolt.class.getName()).log(Level.INFO,
-        //        "passing data through\n");
-    
-        if(!payloadClass.equalsIgnoreCase(Activity.class.getName())){
-            Logger.getLogger(ActivityEnrichBolt.class.getName()).log(Level.SEVERE,
+        String payloadClass = tuple.getStringByField(HeronTestTupleSchema.SCHEMA_PAYLOADCLASS);        
+        if(!payloadClass.equalsIgnoreCase(Alert.class.getName())){
+            Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.SEVERE,
                 "execute - unexpected class in payload: "+payloadClass+"\n");
             collector.fail(tuple);
             return;
         }
-        
+
         //proving rehydration here from bytes
-        Activity activity;
+        Alert alert;
         byte[] payloadAsBytes = tuple.getBinaryByField(HeronTestTupleSchema.SCHEMA_PAYLOAD_AS_BYTES);
         try{
-            activity = Activity.getFromBytes(payloadAsBytes);
-            //Logger.getLogger(ActivityEnrichBolt.class.getName()).log(Level.INFO,
-            //    "execute - rehydrated payload: "+activity.toString()+"\n");
+            alert = Alert.getFromBytes(payloadAsBytes);
+            //Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.INFO,
+            //    "execute - rehydrated payload: "+alert.toString()+"\n");
         }catch( Exception any ){
-            Logger.getLogger(ActivityEnrichBolt.class.getName()).log(Level.SEVERE,  
+            Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.SEVERE,
                 "execute - rehydration failed: "+payloadClass+"\n");
             collector.fail(tuple);
             return;
         }
+            
+        GlobalMetrics.incr("publishing_alert");
+
+        //send alert to common pub/sub queue (Kafka?)
+        publishAlert( alert );
+
+        Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.INFO,
+            "execute - alert firing  : "+alert.toString()+"\n");                
         
-        //save off a history of the raw activity 
-        publishActivity( activity );
-        
-        //pass on to next bolt
-        collector.emit( tuple, tuple.getValues() );
-               
-       //do not ack here we want the new tuples to 
-       //be tracked through to the subsequent bolts
+        //we are DONE with the original
+        //tuple since we've processed the alert
+        // -- end of stream
+        collector.ack(tuple);
     }
+
     
     /**
      * 
-     * @param activity 
+     * @param alert
      */
-    private void publishActivity( Activity activity ){
+    private void publishAlert( Alert alert ){
         
         try (Jedis jedis = jedisPool.getResource()) {
             
-            jedis.publish("activity", activity.toStringTuple()); 
+            jedis.publish("alerts", alert.toStringTuple()); 
             
         }catch(Exception any){
-            Logger.getLogger(ActivityEnrichBolt.class.getName()).log(Level.WARNING,
-                "problem publishing activity "+activity.uuid+": "+any.toString()+"\n");
+            Logger.getLogger(AlertPublisherBolt.class.getName()).log(Level.WARNING,
+                "problem publishing alert "+alert.eventUuid+": "+any.toString()+"\n");
         }
     }
-
     
-
 }        
 

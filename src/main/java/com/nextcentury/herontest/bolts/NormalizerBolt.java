@@ -11,6 +11,7 @@ import com.twitter.heron.api.bolt.OutputCollector;
 import com.twitter.heron.api.topology.OutputFieldsDeclarer;
 import com.twitter.heron.api.topology.TopologyContext;
 import com.twitter.heron.api.metric.GlobalMetrics;
+import com.twitter.heron.api.tuple.Fields;
 
 import com.twitter.heron.api.tuple.Tuple;
 import com.twitter.heron.api.tuple.Values;
@@ -35,7 +36,7 @@ import java.util.logging.Logger;
  */
 public class NormalizerBolt extends BaseRichBolt {
 
-    public static String NORMALIZER_NODE = "NormalizerNode";
+    public static final String NORMALIZER_NODE = "NormalizerNode";
     
     private static final long serialVersionUID = -1L;
     private OutputCollector collector;
@@ -48,7 +49,7 @@ public class NormalizerBolt extends BaseRichBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(HeronTestTupleSchema.getBoltPayloadSchema());        
+        declarer.declare(HeronTestTupleSchema.getBoltPayloadSchema());   
     }    
     
     @Override
@@ -130,9 +131,6 @@ public class NormalizerBolt extends BaseRichBolt {
         //so ACK the results
         collector.ack(tuple);
 
-        
-        Utils.sleep(1*1000); /*simulate slow down in this node*/
-               
         //emit the resulting activity
         collector.emit( new Values( activity.objectId,                                 
                                 Activity.class.getName(), 

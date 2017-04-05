@@ -3,6 +3,7 @@ package com.nextcentury.herontest.bolts;
 import com.nextcentury.herontest.HeronTestTupleSchema;
 import com.nextcentury.herontest.dto.Activity;
 import com.nextcentury.herontest.dto.ActivityAlert;
+import com.nextcentury.herontest.dto.Alert;
 import com.twitter.heron.api.metric.GlobalMetrics;
 
 import com.twitter.heron.api.bolt.BaseRichBolt;
@@ -11,15 +12,14 @@ import com.twitter.heron.api.topology.OutputFieldsDeclarer;
 import com.twitter.heron.api.topology.TopologyContext;
 
 import com.twitter.heron.api.tuple.Tuple;
+import com.twitter.heron.api.tuple.Values;
+import java.io.IOException;
 import java.util.Date;
 
 import java.util.Map;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 
 
 /**
@@ -33,25 +33,32 @@ public class ActivityAlertBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = -1L;
     private OutputCollector collector;
-    private JedisPool jedisPool;
     
-    private Random randomizer = new Random();
+    private final Random randomizer = new Random();
 
     
-    public static String ACTIVITY_ALERT_NODE = "ActivityAlertNode";
+    public static final String ACTIVITY_ALERT_NODE = "ActivityAlertNode";
+    public static final String ACTIVITY_ALERT_STREAM = ACTIVITY_ALERT_NODE+".AlertStream";
     
     @SuppressWarnings("rawtypes")
     @Override
     public void prepare(Map<String, Object> map, TopologyContext tc, OutputCollector oc) {
-        collector = oc;
-        
-        jedisPool = new JedisPool(new JedisPoolConfig(), "10.10.83.58" ); //default port:6379
+        collector = oc;        
     }
-
+    
+    @Override
+    public void cleanup() {
+        
+        super.cleanup(); //To change body of generated methods, choose Tools | Templates.        
+    } 
+    
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-         //nothing ot declare - not forwarding on to other bolts
+        declarer.declare(HeronTestTupleSchema.getBoltAlertSchema());   
+        declarer.declareStream(ACTIVITY_ALERT_STREAM, HeronTestTupleSchema.getBoltAlertSchema());
+
     }
+   
 
     @Override
     public void execute(Tuple tuple) {
@@ -91,36 +98,33 @@ public class ActivityAlertBolt extends BaseRichBolt {
             activityAlert.eventUuid = activity.uuid; //TODO - faster to pass this along in the tuple!
             activityAlert.alertDescription = "ACTIVITY ALERT: "+activity.uuid +" : "+flightStatus;
             
-            GlobalMetrics.incr("activity_alerted");
+            //recreate the bytes (with the enrichment)
+            byte[] payloadAsBytesActivityAlert=null;
+            try {
+                payloadAsBytesActivityAlert = activityAlert.getAsBytes();           
+            }catch(IOException ioe){
+                Logger.getLogger(ActivityAlertBolt.class.getName()).log(Level.SEVERE,
+                    "execute - activity alert object as bytes failed: "+ioe.toString()+"\n");
+                collector.fail(tuple);            
+            }                      
             
-            //send alert to common pub/sub queue (Kafka?)
-            publishActivityAlert( activityAlert );
+            GlobalMetrics.incr("activity_alerted");
+                              
+            //emit the new tuple (the enriched version)
+            collector.emit( ACTIVITY_ALERT_STREAM,
+                            new Values( activityAlert.eventUuid, 
+                                activityAlert.alertDescription, 
+                                Alert.class.getName(), 
+                                payloadAsBytesActivityAlert));                       
             
             Logger.getLogger(ActivityAlertBolt.class.getName()).log(Level.INFO,
-                "execute - activity alert firing  : "+activity.toString()+"\n");                
+                "execute - activity alert forwarding  : "+activity.toString()+"\n");                
         }
         
         //we are DONE with the original
         //tuple since we've processed the alert
         // -- end of stream
         collector.ack(tuple);
-    }
-
-    
-    /**
-     * 
-     * @param activityAlert
-     */
-    private void publishActivityAlert( ActivityAlert activityAlert ){
-        
-        try (Jedis jedis = jedisPool.getResource()) {
-            
-            jedis.publish("activityAlerts", activityAlert.toStringTuple()); 
-            
-        }catch(Exception any){
-            Logger.getLogger(ActivityAlertBolt.class.getName()).log(Level.WARNING,
-                "problem publishing activity alert "+activityAlert.eventUuid+": "+any.toString()+"\n");
-        }
     }
     
 }        

@@ -32,7 +32,7 @@ import redis.clients.jedis.JedisPoolConfig;
 public class LocationEnrichBolt extends BaseRichBolt {
 
 
-    public static String LOCATION_ENRICH_NODE = "LocationEnrichNode";
+    public static final String LOCATION_ENRICH_NODE = "LocationEnrichNode";
             
     private static final long serialVersionUID = -1L;
     private OutputCollector collector;

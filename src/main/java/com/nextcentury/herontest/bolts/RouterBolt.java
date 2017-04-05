@@ -32,7 +32,7 @@ public class RouterBolt extends BaseRichBolt {
 
     public static final String ROUTER_NODE = "RouterNode";
     
-    public static final String LOCATION_ROUTER_STREAM = ROUTER_NODE+"LocationStream";
+    public static final String LOCATION_ROUTER_STREAM = ROUTER_NODE+".LocationStream";
     public static final String ACTIVITY_ROUTER_STREAM = ROUTER_NODE+"ActivityStream";
     
     private static final long serialVersionUID = -1L;
@@ -47,11 +47,8 @@ public class RouterBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
 
-        Fields schemaLocation = HeronTestTupleSchema.getBoltPayloadSchema();
-        declarer.declareStream(LOCATION_ROUTER_STREAM, schemaLocation);
-        
-        Fields schemaActivity = HeronTestTupleSchema.getBoltPayloadSchema();
-        declarer.declareStream(ACTIVITY_ROUTER_STREAM, schemaActivity);        
+        declarer.declareStream(LOCATION_ROUTER_STREAM, HeronTestTupleSchema.getBoltPayloadSchema());
+        declarer.declareStream(ACTIVITY_ROUTER_STREAM, HeronTestTupleSchema.getBoltPayloadSchema());        
         
     }
     
