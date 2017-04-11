@@ -93,7 +93,9 @@ public class LocationEnrichBolt extends BaseRichBolt {
         }else{
             Logger.getLogger(LocationEnrichBolt.class.getName()).log(Level.SEVERE,  
                 "execute - could not fine lat/lon on class: "+location.uuid+"\n");
-            collector.fail(tuple);
+            
+            //this is a "soft" error situation 
+            //so do not send back a "fail" ack           
             
             return; //throw this location out
         }
@@ -115,17 +117,18 @@ public class LocationEnrichBolt extends BaseRichBolt {
         }
         
         GlobalMetrics.incr("location_enriched");
-        
+
+        //emit the new tuple (the enriched version)
+        collector.emit( tuple,
+                        new Values( location.objectId, 
+                                location.geoHash, //note: additional tuple value in this enrichment
+                                Location.class.getName(), 
+                                payloadAsBytesLocationEnriched));
+               
         //done with original location tuple (immutable)
         // - passing on newly enriched tuple
         collector.ack(tuple);
         
-        //emit the new tuple (the enriched version)
-        collector.emit( new Values( location.objectId, 
-                                location.geoHash, //note: additional tuple value in this enrichment
-                                Location.class.getName(), 
-                                payloadAsBytesLocationEnriched));
-       
     }
     
     /**

@@ -125,6 +125,7 @@ public class LocationAlertBolt extends BaseRichBolt {
 
             //emit the new tuple (the enriched version)
             collector.emit( LOCATION_ALERT_STREAM,
+                            tuple,
                             new Values( locationAlert.eventUuid, 
                                 locationAlert.alertDescription, 
                                 Alert.class.getName(), 
@@ -133,10 +134,7 @@ public class LocationAlertBolt extends BaseRichBolt {
             Logger.getLogger(LocationAlertBolt.class.getName()).log(Level.INFO, 
                 "execute - location alert forwarding : "+locationAlert.toString()+"\n");              
         }
-        
-        //we are DONE with the original
-        //tuple since we've processed the alert
-        // -- end of stream
+
         collector.ack(tuple);
     }
 

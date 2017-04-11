@@ -143,7 +143,9 @@ public class PunchingBagBolt extends BaseRichBolt {
                 return;
             }
         }
-               
+                
+        collector.emit( tuple, tuple.getValues() );
+        
         if( ackNone ){
             Logger.getLogger(PunchingBagBolt.class.getName()).log(Level.INFO, 
                     "PUNCHED - sending NO ACKs\n");            
@@ -151,7 +153,7 @@ public class PunchingBagBolt extends BaseRichBolt {
             collector.ack(tuple);
         }
         
-        collector.emit( tuple, tuple.getValues() );
+       
     }
 
     private void leakMemory(){

@@ -72,7 +72,7 @@ public class AirTrafficSpout extends BaseRichSpout {
         
             Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
                 "... pausing before reading more\n");            
-            Utils.sleep(60*1000); // pause - don't want to hammer the service!
+            Utils.sleep(10*1000); // pause - don't want to hammer the service!
         }//else, has not been read yet
 
         Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
@@ -115,17 +115,20 @@ public class AirTrafficSpout extends BaseRichSpout {
         byte[] payloadAsBytes;
         try {
             payloadAsBytes = osra.getAsBytes();                
+
+            String messageUUID = osra.icao24TransponderAddr+"."+System.currentTimeMillis();
+
             
             Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
-                "nextTuple - pushing air traffic for "+osra.callsign+"....as bytes L="+payloadAsBytes.length+"\n");
-
+                "nextTuple - pushing air traffic for "+osra.callsign+"....messageID="+messageUUID+"\n");
+            
             collector.emit(
                     new Values( callsign, 
                                 originCountry, 
                                 isFlying, 
                                 payloadClass, 
                                 payloadAsBytes), 
-                    osra.icao24TransponderAddr /*ack/fail message ID*/);            
+                    messageUUID /*ack/fail message ID*/);            
         } catch (IOException ex) {
             Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.SEVERE, ex.getMessage());
             
@@ -134,9 +137,13 @@ public class AirTrafficSpout extends BaseRichSpout {
     }
 
     public void ack(Object msgId) {
+        Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
+                "ack: "+msgId+"\n");        
     }
 
     public void fail(Object msgId) {
+        Logger.getLogger(AirTrafficSpout.class.getName()).log(Level.INFO, 
+                "fail: "+msgId+"\n");
     }
 
     @Override

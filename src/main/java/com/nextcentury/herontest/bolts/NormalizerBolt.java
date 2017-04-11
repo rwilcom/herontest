@@ -124,23 +124,23 @@ public class NormalizerBolt extends BaseRichBolt {
             collector.fail(tuple);            
         }
         GlobalMetrics.incr("location_generated");
-                
+
+        //emit the resulting activity
+        collector.emit( tuple, new Values( activity.objectId,                                 
+                                Activity.class.getName(), 
+                                payloadAsBytesActivity));
+
+        //emit the resulting location        
+        collector.emit( tuple, new Values( location.objectId,                                 
+                                Location.class.getName(), 
+                                payloadAsBytesLocation));
+                        
         //we are DONE with the original
         //object here since we've tranformed 
         //it into two other object types
         //so ACK the results
         collector.ack(tuple);
 
-        //emit the resulting activity
-        collector.emit( new Values( activity.objectId,                                 
-                                Activity.class.getName(), 
-                                payloadAsBytesActivity));
-
-        //emit the resulting location        
-        collector.emit( new Values( location.objectId,                                 
-                                Location.class.getName(), 
-                                payloadAsBytesLocation));
-        
     }
 
 }    

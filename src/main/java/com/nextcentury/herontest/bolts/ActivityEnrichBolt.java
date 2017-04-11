@@ -96,9 +96,8 @@ public class ActivityEnrichBolt extends BaseRichBolt {
         
         //pass on to next bolt
         collector.emit( tuple, tuple.getValues() );
-               
-       //do not ack here we want the new tuples to 
-       //be tracked through to the subsequent bolts
+
+        collector.ack(tuple);
     }
     
     /**

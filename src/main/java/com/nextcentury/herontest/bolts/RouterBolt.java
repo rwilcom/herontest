@@ -69,9 +69,9 @@ public class RouterBolt extends BaseRichBolt {
        }
        
        collector.emit(streamName, tuple, tuple.getValues());
-       
-       //do not ack here we want the new tuples to 
-       //be tracked through to the subsequent bolts
+
+       //splitting up the stream so must ack on *this* stream
+       collector.ack(tuple);
     }
 
 }

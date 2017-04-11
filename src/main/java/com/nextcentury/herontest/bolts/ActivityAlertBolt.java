@@ -112,6 +112,7 @@ public class ActivityAlertBolt extends BaseRichBolt {
                               
             //emit the new tuple (the enriched version)
             collector.emit( ACTIVITY_ALERT_STREAM,
+                            tuple,
                             new Values( activityAlert.eventUuid, 
                                 activityAlert.alertDescription, 
                                 Alert.class.getName(), 
@@ -121,9 +122,7 @@ public class ActivityAlertBolt extends BaseRichBolt {
                 "execute - activity alert forwarding  : "+activity.toString()+"\n");                
         }
         
-        //we are DONE with the original
-        //tuple since we've processed the alert
-        // -- end of stream
+
         collector.ack(tuple);
     }
     

@@ -101,7 +101,7 @@ public class AlertPublisherBolt extends BaseRichBolt {
         //we are DONE with the original
         //tuple since we've processed the alert
         // -- end of stream
-        collector.ack(tuple);
+        collector.ack(tuple);      
     }
 
     
